@@ -22,6 +22,9 @@ public class Dados {
         int ultimo_id, proximo_id;
         byte ba[];
 
+        nome = nome.replaceAll("[ÁáÉéÍíÓóÚúÂâÊêÔôÃãÕõÇç]", "?");
+        cidade = cidade.replaceAll("[ÁáÉéÍíÓóÚúÂâÊêÔôÃãÕõÇç]", "?");
+
         // Le Id do cabecalho (Id do novo objeto)
         fout.seek(0);
         ultimo_id = fout.readInt();
@@ -57,6 +60,9 @@ public class Dados {
         int tam_registro;
         byte lapide, ba[], conta_novo_registro[];
         boolean flag_encontrou = false;
+
+        conta_atualizada.nome = conta_atualizada.nome.replaceAll("[ÁáÉéÍíÓóÚúÂâÊêÔôÃãÕõÇç]", "?");
+        conta_atualizada.cidade = conta_atualizada.cidade.replaceAll("[ÁáÉéÍíÓóÚúÂâÊêÔôÃãÕõÇç]", "?");
 
         Contas conta = new Contas();
 
@@ -331,9 +337,9 @@ public class Dados {
                 if (lapide != 1) {
                     conta.fromByteArray(ba);
 
-                    List<Integer> result_nome = new ArrayList<>();
-                    List<Integer> result_cpf = new ArrayList<>();
-                    List<Integer> result_cidade = new ArrayList<>();
+                    List<Integer>   result_nome = new ArrayList<>(),
+                                    result_cpf = new ArrayList<>(),
+                                    result_cidade = new ArrayList<>();
 
                     result_nome = lzw.compressao_lzw(conta.nome);
                     result_cpf = lzw.compressao_lzw(conta.cpf);
@@ -342,7 +348,6 @@ public class Dados {
                     byte ba_comprimido[] = lzw.toByteArrayLzw(  conta.id_conta, result_nome, result_cpf, 
                             result_cidade, conta.qtd_transferencias, conta.saldo);
                     
-                    // System.out.println("tam_array_comprimido: " + ba.length);
                     arq_destino.writeByte(ba_comprimido.length);
                     arq_destino.write(ba_comprimido);
                 }
