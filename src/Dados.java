@@ -1,11 +1,14 @@
 import java.io.RandomAccessFile;
+import java.nio.file.Files;
 import java.io.EOFException;
+import java.io.File;
 import java.io.IOException;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.List;
 
-import javax.imageio.stream.ImageOutputStream;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
 public class Dados {
     // Funcao imprime mensagem (String) dentro de moldura
@@ -287,6 +290,7 @@ public class Dados {
 
     public void compactar_arquivo(RandomAccessFile arq) throws IOException {
         RandomAccessFile arq_versao = new RandomAccessFile("versao.bin", "rw");
+        
         int versao = 0;
         try {
             arq_versao.seek(0);
@@ -296,16 +300,12 @@ public class Dados {
             arq_versao.seek(0);
             arq_versao.writeInt(0);
         }
-        // arq_versao.seek(0);
-        // versao = arq_versao.readInt();
 
         RandomAccessFile arq_destino = new RandomAccessFile("contasCompressao" + versao + ".lzw", "rw");
 
-        arq_versao.seek(0);
         versao++;
+        arq_versao.seek(0);
         arq_versao.writeInt(versao);
-
-        System.out.println(versao);
         arq_versao.close();
 
         byte    lapide,
@@ -342,7 +342,8 @@ public class Dados {
                     byte ba_comprimido[] = lzw.toByteArrayLzw(  conta.id_conta, result_nome, result_cpf, 
                             result_cidade, conta.qtd_transferencias, conta.saldo);
                     
-                    arq_destino.writeByte(ba.length);
+                    // System.out.println("tam_array_comprimido: " + ba.length);
+                    arq_destino.writeByte(ba_comprimido.length);
                     arq_destino.write(ba_comprimido);
                 }
             } catch (EOFException err) {
@@ -351,74 +352,82 @@ public class Dados {
             }
         }
 
-        imprime_mensagem("Arquivo compactado com sucesso!");
+        System.out.println("Arquivo Compactado com sucesso!");
+
+        Path path_comprimida = Paths.get("contasCompressao" + (versao - 1) + ".lzw"),
+            path_original = Paths.get("contas.bin");
+        float tamanho_original = Files.size(path_original),
+            tamanho_comprimido = Files.size(path_comprimida);
+
+        System.out.println("Redução no espaço: " + (100 - (tamanho_comprimido/tamanho_original) * 100) + "%");
     }
 
     public void descompactar_arquivo(int versao) throws IOException {
         RandomAccessFile arq_versao = new RandomAccessFile("versao.bin", "rw");
+
         try {
             arq_versao.seek(0);
             arq_versao.readInt();
         } catch (Exception e) {
-            arq_versao.writeInt(0);
-            imprime_mensagem("Versão Inválida!");
+            System.out.println("Versão Inválida!");
             arq_versao.close();
             return;
         }
 
         arq_versao.seek(0);
-        if (versao > arq_versao.readInt()) {
-            imprime_mensagem("Versão Inválida!");
+        if (versao > (arq_versao.readInt() - 1)) {
+            System.out.println("Versão Inválida!");
             arq_versao.close();
             return;
         }
 
-        RandomAccessFile arq = new RandomAccessFile("contasCompressao" + versao + ".lzw", "r");
-        //RandomAccessFile arq_destino = new RandomAccessFile("contas.bin", "rw");
-        //new RandomAccessFile("contas.bin", "rw").setLength(0);
+        RandomAccessFile arq = new RandomAccessFile("contasCompressao" + versao + ".lzw", "rw");        
+        RandomAccessFile arq_destino = new RandomAccessFile("contas.bin", "rw");
+
+        if (arq.length() == 0) {
+            new RandomAccessFile("contas.bin", "rw").setLength(0);
+            System.out.println("Arquivo Não Encontrado!");
+            arq.close();
+            return;
+        } else if (arq_destino.length() == 0) {
+            new RandomAccessFile("contasCompressao" + versao + ".lzw", "rw").setLength(0);
+            System.out.println("Arquivo Não Encontrado!");
+            arq_destino.close();
+            return;
+        }
+        
         arq_versao.close();
 
-        int i = 0;
+        byte    tam_registro,
+                ba[];
+        Contas conta = new Contas();
+        Lzw lzw = new Lzw();
+
+        // Le Id do ultimo registro
         arq.seek(0);
-        while (i < arq.length()) {
-            System.out.print(arq.readByte());
-            i++;
+        arq_destino.seek(0);
+        arq_destino.writeInt(arq.readInt());
+
+        // Verifica todos os registros ate encontrar Id inserido
+        while(true) {
+            try {
+                // Le cabecalho do registro 
+                arq_destino.writeByte(0);
+                tam_registro = arq.readByte();
+
+                // Le dados do registro 
+                ba = new byte[tam_registro];
+                arq.read(ba);
+                conta = lzw.fromByteArrayLzw(ba);
+
+                ba = conta.toByteArray();
+                arq_destino.writeInt(ba.length);
+                arq_destino.write(ba);
+            } catch (EOFException err) {
+                break;
+            }
         }
 
-        return;
-
-        // byte    tam_registro,
-        //         ba[];
-        // Contas conta = new Contas();
-        // Lzw lzw = new Lzw();
-
-        // // Le Id do ultimo registro
-        // arq.seek(0);
-        // arq_destino.seek(0);
-        // arq_destino.writeInt(arq.readInt());
-
-        // // Le Id do ultimo registro
-        // arq.seek(0);
-        // arq.readInt();
-
-        // // Verifica todos os registros ate encontrar Id inserido
-        // while(true) {
-        //     try {
-        //         // Le cabecalho do registro 
-        //         arq_destino.writeByte(0);
-        //         tam_registro = arq.readByte();
-
-        //         // Le dados do registro 
-        //         ba = new byte[tam_registro];
-        //         arq.read(ba);
-        //         conta = lzw.fromByteArrayLzw(ba);
-
-        //         ba = conta.toByteArray();
-        //         arq_destino.writeInt(ba.length);
-        //         arq_destino.write(ba);
-        //     } catch (EOFException err) {
-        //         break;
-        //     }
-        // }
+        System.out.println("Arquivo Descompactado com Sucesso!");
     }
 }

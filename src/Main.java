@@ -140,7 +140,7 @@ public class Main {
                         
                         int versao = 0;
                         System.out.print("Insira a versão do arquivo que será descompactado: ");
-                        input.nextInt();
+                        versao = input.nextInt();
 
                         dados.descompactar_arquivo(versao);
                         break;
